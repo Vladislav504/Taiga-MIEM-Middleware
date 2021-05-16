@@ -3,3 +3,4 @@ __pycache__
 .vscode
 .eggs
 *.egg-info
+migrations
