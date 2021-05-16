@@ -1,0 +1,325 @@
+openapi: '3.0.2'
+info:
+  title: API
+  description: MIEM Taiga API
+  contact:
+    email: vvkovyazin@miem.hse.ru
+  version: 0.0.1-oas3
+servers:
+  - url: http://localhost:8000/miem/api/
+tags:
+- name: admins
+  description: Secured Admin-only calls
+- name: developers
+  description: Operations available to regular developers
+paths:
+  /projects/{projectNumber}/users:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+      - admins
+      summary: add user to specified project
+      description: |
+        Invite user with specified role and permission with his email to Taiga project. is_leader is false by default. Role is 'участник' if is_leader is false and 'руководитель' if it is true.
+      operationId: projectsProjectNumberUsersPOST
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Number of the project
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'         
+        "201":
+          description: user successfully invited
+        "500":
+          description: Taiga did respond with error
+        "400":
+          description: Bad request
+        "404":
+          description: Project does not exists
+      x-swagger-router-controller: Admins
+    delete:
+      security:
+        - bearerAuth: []
+      tags:
+      - admins
+      summary: delete user from project
+      description: |
+        Delete user from project with his email
+      operationId: projectsProjectNumberUsersDELETE
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Number of the project
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body_1'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'         
+        "200":
+          description: user is successfully deleted
+        "500":
+          description: Taiga returned error
+        "400":
+          description: Email is not specified
+        "404":
+          description: User is not exisit in project
+      x-swagger-router-controller: Admins
+    patch:
+      security:
+        - bearerAuth: []      
+      tags:
+      - admins
+      summary: alter user in project
+      description: |
+        Change user information in project
+      operationId: projectsProjectNumberUsersPATCH
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Number of the project
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body_2'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'         
+        "200":
+          description: user is successfully altered
+        "500":
+          description: Taiga returned error
+        "400":
+          description: If none of is_leader or role is specified
+        "404":
+          description: User is not exisit in project
+      x-swagger-router-controller: Admins
+  /projects/add:
+    put:
+      security:
+        - bearerAuth: []
+      tags:
+      - admins
+      summary: add project without creating in Taiga
+      description: |
+        Puts project without creating in Taiga. Updates project if it already exists.
+      operationId: projectsAddPUT
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/body_3'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'        
+        "201":
+          description: project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        "200":
+          description: project added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        "400":
+          description: bad request
+      x-swagger-router-controller: Admins
+  /projects:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+      - admins
+      summary: creates project
+      description: |
+        Creates project if number present or just add to db without number
+        If project already presents in system then it returns project information
+      operationId: createProject
+      requestBody:
+        description: project to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/project_create'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        "201":
+          description: project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        "200":
+          description: project already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        "400":
+          description: bad request
+      x-swagger-router-controller: Admins
+    get:
+      tags:
+      - developers
+      summary: list all projects
+      description: |
+        Returns all projects in Taiga with or without number
+      operationId: lisAllProjects
+      responses:
+        "200":
+          description: all projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+                x-content-type: application/json
+      x-swagger-router-controller: Developers
+  /projects/{projectNumber}:
+    get:
+      tags:
+      - developers
+      summary: returns project by number
+      description: Returns project with specified number
+      operationId: getProject
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Number of the project
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+      
+        "200":
+          description: project is returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+      x-swagger-router-controller: Developers
+
+components:
+  responses:
+    UnauthorizedError:
+      description: Authentication credentials were not provided.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Project:
+      required:
+      - fullname
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uuid
+          example: 1
+        taiga_id:
+          type: integer
+          format: uuid
+          example: 1
+        number:
+          type: integer
+          example: 239
+        fullname:
+          type: string
+          example: 239 Project Tools
+        description:
+          type: string
+          example: No description
+        url:
+          type: string
+          example: https://track.miem.hse.ru/project/239
+      example:
+        number: 239
+        description: No description
+        id: 1
+        fullname: 239 Project Tools
+        taiga_id: 1
+        url: https://track.miem.hse.ru/project/239
+    body:
+      required:
+      - email
+      type: object
+      properties:
+        is_leader:
+          type: boolean
+        email:
+          type: string
+        role:
+          type: string
+    body_1:
+      required:
+      - email
+      type: object
+      properties:
+        email:
+          type: string
+    body_2:
+      required:
+      - email
+      type: object
+      properties:
+        is_leader:
+          type: boolean
+        email:
+          type: string
+        role:
+          type: string
+    body_3:
+      required:
+      - fullname
+      - taiga_id
+      type: object
+      properties:
+        fullname:
+          type: string
+        description:
+          type: string
+        number:
+          type: integer
+        taiga_id:
+          type: integer
+    project_create:
+      required:
+      - number
+      type: object
+      properties:
+        number:
+          type: integer
