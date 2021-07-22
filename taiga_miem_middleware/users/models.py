@@ -1,6 +1,5 @@
 import uuid
 from django.db import models
-from django.db.models import Q
 from django.conf import settings
 
 from taiga.users.models import Role
@@ -33,12 +32,6 @@ class Leaderships(models.Model):
             'project',
         )
 
-    def change_membership(self):
-        membership = Membership.objects.get(
-            Q(user=self.user), Q(project=self.project.project))
-        membership.is_admin = self.is_leader
-        membership.save(update_fields=["is_admin"])
-
     def invite(self):
         data = {
             "project_id": self.project.project_id,
@@ -53,3 +46,20 @@ class Leaderships(models.Model):
         membership = Membership(**data)
         membership.save()
         send_invitation(membership)
+
+    def change_membership(self, *args, **kwargs):
+        self.update_membership(*args, **kwargs)
+
+    def update_membership(self, membership, new_email=None, new_role=None):
+        updated = ["is_admin"]
+        membership.is_admin = self.is_leader
+        if new_role is not None:
+            membership.role = new_role
+            updated.append("role")
+        if new_email is not None:
+            membership.email = new_email
+            membership.token = str(uuid.uuid1())
+            updated.append("email")
+            updated.append("token")
+            send_invitation(membership)
+        membership.save(update_fields=updated)
