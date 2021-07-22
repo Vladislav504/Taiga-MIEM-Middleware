@@ -57,13 +57,14 @@ def just_user():
 
 @pytest.fixture
 def project():
-    project = f.TrackingProjectFactory()
+    taiga_project = f.create_project()
+    project = f.TrackingProjectFactory(project=taiga_project)
     project.save()
     return project
 
 
 @pytest.fixture
-def invite():
-    invite = f.UsersInviteFactory()
+def invite(project):
+    invite = f.UsersInviteFactory(project=project)
     invite.save()
     return invite
