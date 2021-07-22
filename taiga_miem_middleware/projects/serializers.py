@@ -1,6 +1,6 @@
 from taiga.base.api import serializers
-from django.utils.translation import ugettext as _
-from taiga.base.fields import Field, MethodField, I18NField
+from taiga.base.fields import Field
+
 
 class TrackingProjectsSerializer(serializers.LightSerializer):
     number = Field()

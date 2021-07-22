@@ -20,3 +20,10 @@ class TrackingProjects(models.Model):
         if self.id != self.number:
             self.id = self.number
         super().save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = "tracking_project"
+        verbose_name_plural = "tracking_projects"
+        ordering = [
+            'number',
+        ]
