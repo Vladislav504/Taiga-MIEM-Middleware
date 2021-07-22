@@ -3,13 +3,9 @@ import pytest
 from django.urls import reverse
 from django.apps import apps
 
-from ..utils import signals_switch
+from .. import factories as f
 
 pytestmark = pytest.mark.django_db(transaction=True)
-
-# отключаем сигналы, чтобы не было ошибок ProjectTemplateDoesNotExists
-disconnect, _ = signals_switch()
-disconnect()
 
 
 def test_invite_already_invited_user(admin_client, project):
@@ -86,14 +82,14 @@ def test_adding_user_without_role(admin_client, just_user, project):
     assert response.status_code == 400
 
 
-def test_adding_user_without_email(admin_client, just_user, project):
+def test_adding_user_without_email(admin_client, project):
     url = reverse("tracking_project_users-list")
     data = {"role": "test", "project": project.number}
     response = admin_client.json.post(url, json.dumps(data))
     assert response.status_code == 400
 
 
-def test_adding_user_without_project(admin_client, just_user, project):
+def test_adding_user_without_project(admin_client, just_user):
     url = reverse("tracking_project_users-list")
     data = {"email": just_user.email, "role": "test"}
     response = admin_client.json.post(url, json.dumps(data))
@@ -121,22 +117,65 @@ def test_invitation_change(admin_client, invite):
     assert response.status_code == 200
 
 
-def test_membership_change_after_invite_change(admin_client, invite):
+def test_membership_is_admin_change_after_invite_change(admin_client, invite):
     url = reverse("tracking_project_users-detail", kwargs={'pk': invite.pk})
+    old = f.MembershipFactory(project=invite.project.project,
+                              role=invite.role,
+                              user=invite.user)
+    old.save()
+    old = old.is_admin
     membership_model = apps.get_model("projects", "Membership")
-    old_field = membership_model.objects.get(project=invite.project.project,
-                                             user=invite.user).is_admin
-    data = {"is_leader": not old_field}
-    admin_client.json.patch(url, json.dumps(data))
-    new_field = membership_model.objects.get(project=invite.project.project,
-                                             user=invite.user).is_admin
-    assert old_field != new_field
+    data = {"is_leader": not old}
+    responce = admin_client.json.patch(url, json.dumps(data))
+    new = membership_model.objects.get(project=invite.project.project,
+                                       user=invite.user)
+    new = new.is_admin
+    assert responce.status_code == 200
+    assert old != new
 
 
-def test_membership_deleted_after_invite_deletion(admin_client, invite):
+def test_membership_email_change_after_invite_change(admin_client):
+    invite = f.UsersInviteFactory(user=None, email="example@example.com")
+    invite.save()
     url = reverse("tracking_project_users-detail", kwargs={'pk': invite.pk})
+    old = f.InvitationFactory(project=invite.project.project,
+                              role=invite.role,
+                              email=invite.email)
+    old.save()
+    membership_model = apps.get_model("projects", "Membership")
+    data = {"email": "new@example.com"}
+    responce = admin_client.json.patch(url, json.dumps(data))
+    new = membership_model.objects.get(project=invite.project.project,
+                                       email=data['email'])
+    assert responce.status_code == 200
+    assert old.token != new.token
+    assert old.email != new.email
+
+
+def test_membership_deleted_after_existed_user_invite_deletion(
+        admin_client, invite):
+    url = reverse("tracking_project_users-detail", kwargs={'pk': invite.pk})
+    f.InvitationFactory(project=invite.project.project,
+                        role=invite.role,
+                        user=invite.user).save()
     membership_model = apps.get_model("projects", "Membership")
     response = admin_client.json.delete(url)
     assert response.status_code == 204
     assert membership_model.objects.filter(project=invite.project.project,
                                            user=invite.user).count() == 0
+
+
+def test_membership_deleted_after_not_existed_user_invite_deletion(
+        admin_client):
+    invite = f.UsersInviteFactory(user=None, email="example@example.com")
+    invite.save()
+    url = reverse("tracking_project_users-detail", kwargs={'pk': invite.pk})
+    f.InvitationFactory(project=invite.project.project,
+                        role=invite.role,
+                        email=invite.email).save()
+    membership_model = apps.get_model("projects", "Membership")
+    response = admin_client.json.delete(url)
+    assert response.status_code == 204
+    assert membership_model.objects.filter(project=invite.project.project,
+                                           user=invite.user).count() == 0
+
