@@ -37,3 +37,19 @@ def test_tracking_project_creation_without_number(admin_client):
     data = {"fullname": "111 TEST"}
     response = admin_client.json.post(url, json.dumps(data))
     assert response.status_code == 400
+
+
+def test_tracking_project_change_fail(admin_client, tracking_project):
+    url = reverse('tracking_projects-detail',
+                  kwargs={'pk': tracking_project.number})
+    data = {"number": 111}
+    response = admin_client.json.patch(url, json.dumps(data))
+    assert response.status_code == 400
+
+
+def test_tracking_project_change_success(admin_client, tracking_project):
+    url = reverse('tracking_projects-detail',
+                  kwargs={'pk': tracking_project.number})
+    data = {"fullname": "New fullname"}
+    response = admin_client.json.patch(url, json.dumps(data))
+    assert response.status_code == 200
