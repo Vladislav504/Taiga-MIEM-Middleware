@@ -8,17 +8,17 @@ info:
 servers:
   - url: http://track.miem.hse.ru/miem/api/
 tags:
-- name: admins
-  description: Secured Admin-only calls
-- name: developers
-  description: Operations available to regular developers
+- name: администраторы
+  description: Доступны только администраторам
+- name: разработчики
+  description: Доступны всем
 paths:
   /users:
     post:
       security:
         - bearerAuth: []
       tags:
-      - admins
+      - администраторы
       summary: добавляет пользователя в проект
       description: |
         Приглашает пользователя в указаный проект по почте
@@ -35,7 +35,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/invite_user'
+              $ref: '#/components/schemas/user_create'
       responses:
         '401':
           $ref: '#/components/responses/UnauthorizedError'         
@@ -43,7 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/users_list'
+                $ref: '#/components/schemas/user_list'
           description: Пользователь успешно добавлен в проект
         "500":
           description: Ошибка со стороны сервера
@@ -53,10 +53,8 @@ paths:
           description: Проект или пользователь не найден
       x-swagger-router-controller: Admins
     get:
-      security:
-        - bearerAuth: []
       tags:
-      - developers
+      - разработчики
       summary: предоставляет список всех приглашений
       description: |
         Предоставляет список всех приглашений пользователей
@@ -71,20 +69,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/users_list'
+                type: array
+                items:
+                  $ref: '#/components/schemas/user_list'
           description: Список пользователей успешно получен
         "500":
           description: Ошибка со стороны сервера
         "400":
           description: Неправильный запрос
       x-swagger-router-controller: Developers
-   
   /users/{inviteId}:
     get:
-      security:
-        - bearerAuth: []
       tags:
-      - developers
+      - разработчики
       summary: предоставляет список всех приглашений
       description: |
         Предоставляет одно приглашение пользователея по id. 
@@ -105,7 +102,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/users_list'
+                $ref: '#/components/schemas/user_list'
           description: Список пользователей успешно получен
         "500":
           description: Ошибка со стороны сервера
@@ -116,10 +113,10 @@ paths:
       security:
         - bearerAuth: []
       tags:
-      - admins
+      - администраторы
       summary: удаляет пользователя из проекта по приглашению
       description: |
-        Удаляет пользователя из проекта по id приглашению.
+        Удаляет пользователя из проекта по id приглашения.
       operationId: projectUserDELETE
       parameters:
       - name: inviteId
@@ -133,7 +130,7 @@ paths:
       responses:
         '401':
           $ref: '#/components/responses/UnauthorizedError'         
-        "200":
+        "204":
           description: Пользователь успешно удален из проекта
         "500":
           description: Ошибка на стороне сервера
@@ -146,17 +143,19 @@ paths:
       security:
         - bearerAuth: []      
       tags:
-      - admins
+      - администраторы
       summary: изменяет данные о приглашении
       description: |
         Изменяет приглашение пользователя в проект.
         
-        Если в проекте уже есть приглашение пользователея,
-        то это изменение отразится на нем.
+        Если пользователь уже был приглашен в проект через Тайгу,
+        но был некативным (не принял приглашение),
+        то этот запрос на изменение отразится и на нем.
 
         Поля user, project и role неизменяемы.
 
-        Поле email будет изменено только в приглашении,
+        Если же пользователь уже существует в проекте, как активный,
+        поле email будет изменено только в изменяемом приглашении,
         по нему в будущем будут начисляться трудозатраты
         и др. Email у самого пользователея в Тайге останется
         прежним. 
@@ -174,7 +173,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/user_patch_example'
+              $ref: '#/components/schemas/user_patch'
       responses:
         '401':
           $ref: '#/components/responses/UnauthorizedError'         
@@ -182,62 +181,30 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/users_list'
+                $ref: '#/components/schemas/user_list'
           description: приглашение изменено
         "500":
           description: Ошибка сервера
-        "400":
+        "400":        
           description: Неверные данные
         "404":
           description: Приглашение не найдено
       x-swagger-router-controller: Admins
   
-  /projects/add:
-    put:
-      security:
-        - bearerAuth: []
-      tags:
-      - admins
-      summary: add project without creating in Taiga
-      description: |
-        Puts project without creating in Taiga. Updates project if it already exists.
-      operationId: projectsAddPUT
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/body_3'
-      responses:
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'        
-        "201":
-          description: project created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        "200":
-          description: project added
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        "400":
-          description: bad request
-      x-swagger-router-controller: Admins
   /projects:
     post:
       security:
         - bearerAuth: []
       tags:
-      - admins
-      summary: creates project
+      - администраторы
+      summary: создание отслеживаемого проекта 
       description: |
-        Creates project if number present or just add to db without number
-        If project already presents in system then it returns project information
+        Создает отслеживаемый проект.
+        Проект создается в Тайге с помощью его номера и названия, 
+        если проект с таким номером уже существует,
+        то просто вернется id этого проекта.
       operationId: createProject
       requestBody:
-        description: project to create
         content:
           application/json:
             schema:
@@ -246,62 +213,121 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         "201":
-          description: project created
+          description: проект успешно создан
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
-        "200":
-          description: project already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/project_list'
         "400":
           description: bad request
       x-swagger-router-controller: Admins
     get:
       tags:
-      - developers
-      summary: list all projects
+      - разработчики
+      summary: список всех отслеживаемых проектов
       description: |
-        Returns all projects in Taiga with or without number
+        Возвращает все проекты, которые подключены к трекингу.
       operationId: lisAllProjects
       responses:
         "200":
-          description: all projects
+          description: успех
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Project'
+                  $ref: '#/components/schemas/project_list'
                 x-content-type: application/json
       x-swagger-router-controller: Developers
   /projects/{projectNumber}:
-    get:
+    delete:
+      security:
+        - bearerAuth: []
       tags:
-      - developers
-      summary: returns project by number
-      description: Returns project with specified number
-      operationId: getProject
+      - администраторы
+      summary: удаление отслеживаемого проекта 
+      description: |
+        Удаляет отслеживаемый проекта.
+
+        Так же удаляет проект в Тайге.
+      operationId: deleteProject
       parameters:
       - name: projectNumber
         in: path
-        description: Number of the project
+        description: Номер проекта
         required: true
         style: simple
         explode: false
         schema:
           type: integer
       responses:
-      
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        "204":
+          description: проект успешно удален
+        "400":
+          description: Неправильный запрос
+      x-swagger-router-controller: Admins
+    patch:
+      security:
+        - bearerAuth: []
+      tags:
+      - администраторы
+      summary: изменение отслеживаемого проекта 
+      description: |
+        Изеняет отслеживаемый проект.
+        Все поля проекта, кроме fullname, неизменяемы.
+
+        Все поля так же будут изменены у проекта в Тайге.
+      operationId: changeProject
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Номер проекта
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/project_patch'
+      responses:
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         "200":
-          description: project is returned
+          description: проект успешно изменен
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
+                $ref: '#/components/schemas/project_list'
+        "400":
+          description: Неправильный запрос
+      x-swagger-router-controller: Admins
+    get:
+      tags:
+      - разработчики
+      summary: Возвращает проект по его номеру
+      description: Возвращает проект с указаным номером 
+      operationId: getProject
+      parameters:
+      - name: projectNumber
+        in: path
+        description: Номер проекта
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: проект успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project_list'
       x-swagger-router-controller: Developers
 
 components:
@@ -314,39 +340,32 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    Project:
-      required:
-      - fullname
+    
+    user_list:
       type: object
       properties:
         id:
           type: integer
           format: uuid
-          example: 1
-        taiga_id:
+          description: id приглашения
+        user:
           type: integer
           format: uuid
-          example: 1
-        number:
-          type: integer
-          example: 239
-        fullname:
+          description: id пользователя в Тайге. None означает, что пользователь еще не существует в Тайге
+        project:
+          type: number
+          description: номер проекта
+        is_leader:
+          type: boolean
+          description: особые права администратора пользователя
+        email:
           type: string
-          example: 239 Project Tools
-        description:
-          type: string
-          example: No description
-        url:
-          type: string
-          example: https://track.miem.hse.ru/project/239
-      example:
-        number: 239
-        description: No description
-        id: 1
-        fullname: 239 Project Tools
-        taiga_id: 1
-        url: https://track.miem.hse.ru/project/239
-    invite_user:
+          format: email
+          description: почта пользователя по которой приглашается пользователь и по которой ведется учет трудозатрат
+        role:
+          type: number
+          description: id роли пользователя в Тайге
+    user_create:
       required:
       - project
       - role
@@ -359,63 +378,57 @@ components:
         is_leader:
           type: boolean
         email:
+          format: string 
           type: string
         role:
           type: string
-    body_1:
-      required:
-      - email
+    user_patch:
       type: object
-      properties:
-        email:
-          type: string
-    user_patch_example:
-      type: object
+      description: пример тела запроса для изменения прилашения пользователя
       properties:
         is_leader:
           type: boolean
-          description: особые права администратора 
-    body_3:
+          description: особые права администратора
+        email:
+          type: string
+          format: email
+          description: |
+           почта, по которой приглашается пользователь,
+            и по которой будет вестись учет трудозатрат 
+    project_list:
+      type: object
+      description: пример отслеживаемого проекта
+      properties:
+        fullname:
+          type: string
+        number:
+          type: integer
+        project:
+          type: integer
+          format: uuid
+      example:
+        number: 123
+        fullname: "123 Тестовый проект"
+        project: 1
+    project_create:
+      description: пример запроса на созданеи отслеживаемого проекта
       required:
+      - number
       - fullname
-      - taiga_id
+      type: object
+      properties:
+        number:
+          type: integer
+        fullname:
+          type: string
+      example:
+        number: 123
+        fullname: "123 Тестовый проект"
+    project_patch:
+      description: пример запроса изменения отслеживаемого проекта
       type: object
       properties:
         fullname:
           type: string
-        description:
-          type: string
-        number:
-          type: integer
-        taiga_id:
-          type: integer
-    project_create:
-      required:
-      - number
-      type: object
-      properties:
-        number:
-          type: integer
-    users_list:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: uuid
-          description: id приглашения
-        user:
-          type: integer
-          format: uuid
-          description: id пользователя в Тайге
-        project:
-          type: number
-          description: номер проекта
-        is_leader:
-          type: boolean
-          description: особые права администратора пользователя
-        email:
-          type: string
-          description: почта пользователя
-        role:
-          type: number
-          description: id роли пользователя в Тайге
+      example:
+        fullname: "123 Тестовый проект"
