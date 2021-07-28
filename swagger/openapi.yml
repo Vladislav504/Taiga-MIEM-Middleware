@@ -6,7 +6,7 @@ info:
     email: vvkovyazin@miem.hse.ru
   version: 0.0.1-oas3
 servers:
-  - url: http://track.miem.hse.ru/miem/api/
+  - url: https://track.miem.hse.ru/miem/api/
 tags:
 - name: администраторы
   description: Доступны только администраторам
