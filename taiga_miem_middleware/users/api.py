@@ -34,4 +34,4 @@ class UsersViewSet(ModelCrudViewSet):
                 Membership.objects.get(email=obj.email,
                                        project=obj.project.project).delete()
         finally:
-            pass
+            super().pre_delete(obj)
