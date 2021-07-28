@@ -7,6 +7,7 @@ from .. import factories as f
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+
 def test_user_accept_invite():
     invite = f.UsersInviteFactory(user=None, email="example@example.com")
     membership = f.InvitationFactory(project=invite.project.project,
