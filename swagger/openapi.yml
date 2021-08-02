@@ -6,7 +6,7 @@ info:
     email: vvkovyazin@miem.hse.ru
   version: 0.0.1-oas3
 servers:
-  - url: http://track.miem.hse.ru/miem/api/
+  - url: https://track.miem.hse.ru/miem/api/
 tags:
 - name: администраторы
   description: Доступны только администраторам
@@ -365,6 +365,13 @@ components:
         role:
           type: number
           description: id роли пользователя в Тайге
+      example:
+        id: 1
+        user: 1
+        project: 111
+        is_leader: true
+        email: "example@example.com"
+        role: 1
     user_create:
       required:
       - project
