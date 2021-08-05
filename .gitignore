@@ -7,3 +7,4 @@ migrations
 build
 dist
 .pytest_cache
+local
