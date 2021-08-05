@@ -69,6 +69,7 @@ def invite(project):
     invite.save()
     return invite
 
+
 @pytest.fixture
 def tracking_project():
     project = f.ProjectFactory()
